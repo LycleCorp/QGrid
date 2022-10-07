@@ -45,6 +45,7 @@ public struct QGrid<Data, Content>: View
   private let showScrollIndicators: Bool
   
   private let data: [Data.Element]
+  private let smallHeightAutoExpandsToMatchLongestItem: Bool
   private let content: (Data.Element) -> Content
   
   // MARK: - INITIALIZERS
@@ -60,6 +61,7 @@ public struct QGrid<Data, Content>: View
   ///     - vPadding: Vertical padding: The distance between top/bottom edge of the grid and the parent view. If not provided, the default value will be used.
   ///     - hPadding: Horizontal padding: The distance between leading/trailing edge of the grid and the parent view. If not provided, the default value will be used.
   ///     - isScrollable: Boolean that determines whether or not the grid should scroll
+    ///   - smallHeightAutoExpandsToMatchLongestItem: Boolean determines wether cells in the same row should be auto resized to match longest one.
   ///     - content: A closure returning the content of the individual cell
   public init(_ data: Data,
               columns: Int,
@@ -70,6 +72,7 @@ public struct QGrid<Data, Content>: View
               hPadding: CGFloat = 10,
               isScrollable: Bool = true,
               showScrollIndicators: Bool = false,
+              smallHeightAutoExpandsToMatchLongestItem: Bool = false,
               content: @escaping (Data.Element) -> Content) {
     self.data = data.map { $0 }
     self.content = content
@@ -80,6 +83,7 @@ public struct QGrid<Data, Content>: View
     self.vPadding = vPadding
     self.hPadding = hPadding
     self.isScrollable = isScrollable
+      self.smallHeightAutoExpandsToMatchLongestItem = smallHeightAutoExpandsToMatchLongestItem
     self.showScrollIndicators = showScrollIndicators
   }
   
@@ -128,9 +132,11 @@ public struct QGrid<Data, Content>: View
       .map { QGridIndex(id: $0) }) { column in
         self.content(self.data[index + column.id])
         .frame(width: self.contentWidthFor(geometry))
+        .frame(maxHeight: .infinity)
       }
       if isLastRow { Spacer() }
     }
+    .fixedSize(horizontal: false, vertical: smallHeightAutoExpandsToMatchLongestItem ?  true : false)
   }
     
   private func content(using geometry: GeometryProxy) -> some View {
