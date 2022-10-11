@@ -37,13 +37,13 @@ public struct QGrid<Data, Content>: View
   
   private let columns: Int
   private let columnsInLandscape: Int
+  private let availableContainerWidth: CGFloat
   private let vSpacing: CGFloat
   private let hSpacing: CGFloat
   private let vPadding: CGFloat
   private let hPadding: CGFloat
   private let isScrollable: Bool
   private let showScrollIndicators: Bool
-  
   private let data: [Data.Element]
   private let smallHeightAutoExpandsToMatchLongestItem: Bool
   private let content: (Data.Element) -> Content
@@ -56,6 +56,7 @@ public struct QGrid<Data, Content>: View
   ///     - data: A collection of identified data.
   ///     - columns: Target number of columns for this grid, in Portrait device orientation
   ///     - columnsInLandscape: Target number of columns for this grid, in Landscape device orientation; If not provided, `columns` value will be used.
+    ///   - availableContainerWidth: The width in which cells should be resized, Make sure you include your left and right paddings. Default is UIScreen.main.bounds.width - 32.
   ///     - vSpacing: Vertical spacing: The distance between each row in grid. If not provided, the default value will be used.
   ///     - hSpacing: Horizontal spacing: The distance between each cell in grid's row. If not provided, the default value will be used.
   ///     - vPadding: Vertical padding: The distance between top/bottom edge of the grid and the parent view. If not provided, the default value will be used.
@@ -66,6 +67,7 @@ public struct QGrid<Data, Content>: View
   public init(_ data: Data,
               columns: Int,
               columnsInLandscape: Int? = nil,
+              availableContainerWidth: CGFloat = UIScreen.main.bounds.width - 32,
               vSpacing: CGFloat = 10,
               hSpacing: CGFloat = 10,
               vPadding: CGFloat = 10,
@@ -78,6 +80,7 @@ public struct QGrid<Data, Content>: View
     self.content = content
     self.columns = max(1, columns)
     self.columnsInLandscape = columnsInLandscape ?? max(1, columns)
+    self.availableContainerWidth = availableContainerWidth
     self.vSpacing = vSpacing
     self.hSpacing = hSpacing
     self.vPadding = vPadding
@@ -105,33 +108,32 @@ public struct QGrid<Data, Content>: View
   
   /// Declares the content and behavior of this view.
   public var body : some View {
-    GeometryReader { geometry in
+      let availableContainerWidth: CGFloat = UIScreen.main.bounds.width - 32
       Group {
         if !self.data.isEmpty {
             if self.isScrollable {
               ScrollView(showsIndicators: self.showScrollIndicators) {
-                self.content(using: geometry)
+                  self.content(using: availableContainerWidth)
               }
             } else {
-              self.content(using: geometry)
+                self.content(using: availableContainerWidth)
             }
           }
       }
       .padding(.horizontal, self.hPadding)
       .padding(.vertical, self.vPadding)
-    }
   }
   
   // MARK: - `BODY BUILDER` 💪 FUNCTIONS
   
   private func rowAtIndex(_ index: Int,
-                          geometry: GeometryProxy,
+                          availableWidth: CGFloat,
                           isLastRow: Bool = false) -> some View {
     HStack(spacing: self.hSpacing) {
       ForEach((0..<(isLastRow ? data.count % cols : cols))
       .map { QGridIndex(id: $0) }) { column in
         self.content(self.data[index + column.id])
-        .frame(width: self.contentWidthFor(geometry))
+        .frame(width: self.contentWidthFor(availableWidth))
         .frame(maxHeight: .infinity)
       }
       if isLastRow { Spacer() }
@@ -139,16 +141,16 @@ public struct QGrid<Data, Content>: View
     .fixedSize(horizontal: false, vertical: smallHeightAutoExpandsToMatchLongestItem ?  true : false)
   }
     
-  private func content(using geometry: GeometryProxy) -> some View {
+  private func content(using availableWidth:CGFloat) -> some View {
    VStack(spacing: self.vSpacing) {
      ForEach((0..<self.rows).map { QGridIndex(id: $0) }) { row in
        self.rowAtIndex(row.id * self.cols,
-                       geometry: geometry)
+                       availableWidth: availableWidth)
      }
      // Handle last row
      if (self.data.count % self.cols > 0) {
        self.rowAtIndex(self.cols * self.rows,
-                       geometry: geometry,
+                       availableWidth: availableWidth,
                        isLastRow: true)
      }
    }
@@ -156,9 +158,9 @@ public struct QGrid<Data, Content>: View
     
   // MARK: - HELPER FUNCTIONS
   
-  private func contentWidthFor(_ geometry: GeometryProxy) -> CGFloat {
+  private func contentWidthFor(_ availableWidth: CGFloat) -> CGFloat {
     let hSpacings = hSpacing * (CGFloat(self.cols) - 1)
-    let width = geometry.size.width - hSpacings - hPadding * 2
+    let width = availableWidth - hSpacings - hPadding * 2
     return width / CGFloat(self.cols)
   }
 }
